@@ -4,11 +4,25 @@ import { authAPI } from "../../utils/api";
 // Async thunks
 export const login = createAsyncThunk(
   "auth/login",
-  async (credentials, { rejectWithValue }) => {
+  async (credentials, { rejectWithValue, getState, dispatch }) => {
     try {
       const response = await authAPI.login(credentials);
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("userInfo", JSON.stringify(response.data));
+
+      // Get current guest wishlist before login
+      const currentState = getState();
+      const guestWishlist = currentState.wishlist.items;
+
+      // If there are items in guest wishlist, we'll need to sync them
+      if (guestWishlist.length > 0) {
+        // Store guest wishlist temporarily for sync
+        localStorage.setItem(
+          "tempGuestWishlist",
+          JSON.stringify(guestWishlist)
+        );
+      }
+
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || "Login failed");
@@ -18,11 +32,25 @@ export const login = createAsyncThunk(
 
 export const register = createAsyncThunk(
   "auth/register",
-  async (userData, { rejectWithValue }) => {
+  async (userData, { rejectWithValue, getState, dispatch }) => {
     try {
       const response = await authAPI.register(userData);
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("userInfo", JSON.stringify(response.data));
+
+      // Get current guest wishlist before registration
+      const currentState = getState();
+      const guestWishlist = currentState.wishlist.items;
+
+      // If there are items in guest wishlist, we'll need to sync them
+      if (guestWishlist.length > 0) {
+        // Store guest wishlist temporarily for sync
+        localStorage.setItem(
+          "tempGuestWishlist",
+          JSON.stringify(guestWishlist)
+        );
+      }
+
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -74,6 +102,36 @@ export const getAllUsers = createAsyncThunk(
   }
 );
 
+// New: Update user role (Admin only)
+export const updateUserRole = createAsyncThunk(
+  "auth/updateUserRole",
+  async ({ userId, roleData }, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.updateUserRole(userId, roleData);
+      return { userId, ...response.data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to update user role"
+      );
+    }
+  }
+);
+
+// New: Toggle user status (Admin only)
+export const toggleUserStatus = createAsyncThunk(
+  "auth/toggleUserStatus",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.toggleUserStatus(userId);
+      return { userId, ...response.data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to toggle user status"
+      );
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   userInfo: JSON.parse(localStorage.getItem("userInfo")) || null,
@@ -84,6 +142,8 @@ const initialState = {
   users: [],
   usersLoading: false,
   usersError: null,
+  userManagementLoading: false,
+  userManagementError: null,
 };
 
 // Auth slice
@@ -101,6 +161,9 @@ const authSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    clearUserManagementError: (state) => {
+      state.userManagementError = null;
     },
   },
   extraReducers: (builder) => {
@@ -186,8 +249,67 @@ const authSlice = createSlice({
         state.usersLoading = false;
         state.usersError = action.payload;
       });
+
+    // Update User Role
+    builder
+      .addCase(updateUserRole.pending, (state) => {
+        state.userManagementLoading = true;
+        state.userManagementError = null;
+      })
+      .addCase(updateUserRole.fulfilled, (state, action) => {
+        state.userManagementLoading = false;
+        // Update user in users list
+        const userIndex = state.users.findIndex(
+          (u) => u._id === action.payload.userId
+        );
+        if (userIndex !== -1) {
+          state.users[userIndex] = {
+            ...state.users[userIndex],
+            ...action.payload,
+          };
+        }
+        // Update current user if it's the same
+        if (state.userInfo && state.userInfo._id === action.payload.userId) {
+          state.userInfo = { ...state.userInfo, ...action.payload };
+        }
+        state.userManagementError = null;
+      })
+      .addCase(updateUserRole.rejected, (state, action) => {
+        state.userManagementLoading = false;
+        state.userManagementError = action.payload;
+      });
+
+    // Toggle User Status
+    builder
+      .addCase(toggleUserStatus.pending, (state) => {
+        state.userManagementLoading = true;
+        state.userManagementError = null;
+      })
+      .addCase(toggleUserStatus.fulfilled, (state, action) => {
+        state.userManagementLoading = false;
+        // Update user in users list
+        const userIndex = state.users.findIndex(
+          (u) => u._id === action.payload.userId
+        );
+        if (userIndex !== -1) {
+          state.users[userIndex] = {
+            ...state.users[userIndex],
+            ...action.payload,
+          };
+        }
+        // Update current user if it's the same
+        if (state.userInfo && state.userInfo._id === action.payload.userId) {
+          state.userInfo = { ...state.userInfo, ...action.payload };
+        }
+        state.userManagementError = null;
+      })
+      .addCase(toggleUserStatus.rejected, (state, action) => {
+        state.userManagementLoading = false;
+        state.userManagementError = action.payload;
+      });
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, clearUserManagementError } =
+  authSlice.actions;
 export default authSlice.reducer;

@@ -10,9 +10,9 @@ const RegisterPage = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    contact: "",
+    phoneNumber: "",
     address: "",
-    role: "user", // Default role is user, admin role is special
+    role: "customer", // Default role is customer, admin role is special
   });
   const [errors, setErrors] = useState({});
 
@@ -82,8 +82,8 @@ const RegisterPage = () => {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    if (!formData.contact.trim()) {
-      newErrors.contact = "Contact number is required";
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
     }
 
     if (!formData.address.trim()) {
@@ -199,21 +199,21 @@ const RegisterPage = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="contact" className="form-label">
-                Contact Number
+              <label htmlFor="phoneNumber" className="form-label">
+                Phone Number
               </label>
               <input
                 type="tel"
-                id="contact"
-                name="contact"
-                value={formData.contact}
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
                 onChange={handleChange}
-                className={`form-input ${errors.contact ? "error" : ""}`}
-                placeholder="Enter your contact number"
+                className={`form-input ${errors.phoneNumber ? "error" : ""}`}
+                placeholder="Enter your phone number (e.g., +1234567890)"
                 disabled={loading}
               />
-              {errors.contact && (
-                <div className="form-error">{errors.contact}</div>
+              {errors.phoneNumber && (
+                <div className="form-error">{errors.phoneNumber}</div>
               )}
             </div>
 

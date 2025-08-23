@@ -22,6 +22,8 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
+import OrderConfirmationPage from "./pages/OrderConfirmationPage";
+import WishlistPage from "./pages/WishlistPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminCreateProductPage from "./pages/AdminCreateProductPage";
 import AdminEditProductPage from "./pages/AdminEditProductPage";
@@ -106,10 +108,16 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
-          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/product/:prodId" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/track-order" element={<OrderTrackingPage />} />
+          <Route
+            path="/order-confirmation/:trackingId"
+            element={<OrderConfirmationPage />}
+          />
+          <Route path="/wishlist" element={<WishlistPage />} />
           <Route
             path="/profile"
             element={
@@ -126,14 +134,7 @@ const AppContent = () => {
               </ProtectedUserRoute>
             }
           />
-          <Route
-            path="/checkout"
-            element={
-              <ProtectedUserRoute>
-                <CheckoutPage />
-              </ProtectedUserRoute>
-            }
-          />
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

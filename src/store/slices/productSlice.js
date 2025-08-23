@@ -6,9 +6,12 @@ export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",
   async (params = {}, { rejectWithValue }) => {
     try {
+      console.log("productSlice: fetchProducts called with params:", params);
       const response = await productAPI.getProducts(params);
+      console.log("productSlice: API response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("productSlice: fetchProducts error:", error);
       return rejectWithValue(
         error.response?.data?.error || "Failed to fetch products"
       );
@@ -32,27 +35,13 @@ export const fetchAllProducts = createAsyncThunk(
 
 export const fetchProductDetails = createAsyncThunk(
   "products/fetchProductDetails",
-  async (id, { rejectWithValue }) => {
+  async (prodId, { rejectWithValue }) => {
     try {
-      const response = await productAPI.getProduct(id);
+      const response = await productAPI.getProductByProdId(prodId);
       return response.data;
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error || "Failed to fetch product details"
-      );
-    }
-  }
-);
-
-export const getProductById = createAsyncThunk(
-  "products/getProductById",
-  async (id, { rejectWithValue }) => {
-    try {
-      const response = await productAPI.getProduct(id);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to fetch product"
       );
     }
   }
@@ -74,9 +63,9 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
   "products/updateProduct",
-  async ({ id, productData }, { rejectWithValue }) => {
+  async ({ prodId, productData }, { rejectWithValue }) => {
     try {
-      const response = await productAPI.updateProduct(id, productData);
+      const response = await productAPI.updateProduct(prodId, productData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -88,10 +77,10 @@ export const updateProduct = createAsyncThunk(
 
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
-  async (id, { rejectWithValue }) => {
+  async (prodId, { rejectWithValue }) => {
     try {
-      await productAPI.deleteProduct(id);
-      return id;
+      await productAPI.deleteProduct(prodId);
+      return prodId;
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error || "Failed to delete product"
@@ -102,9 +91,9 @@ export const deleteProduct = createAsyncThunk(
 
 export const toggleProductStatus = createAsyncThunk(
   "products/toggleProductStatus",
-  async (id, { rejectWithValue }) => {
+  async (prodId, { rejectWithValue }) => {
     try {
-      const response = await productAPI.toggleProductStatus(id);
+      const response = await productAPI.toggleProductStatus(prodId);
       return response.data.product;
     } catch (error) {
       return rejectWithValue(
@@ -128,26 +117,11 @@ export const fetchCategories = createAsyncThunk(
   }
 );
 
-export const fetchBrands = createAsyncThunk(
-  "products/fetchBrands",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await productAPI.getBrands();
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to fetch brands"
-      );
-    }
-  }
-);
-
 // Initial state
 const initialState = {
   products: [],
   product: null,
   categories: [],
-  brands: [],
   loading: false,
   error: null,
   totalPages: 0,
@@ -155,7 +129,6 @@ const initialState = {
   total: 0,
   filters: {
     category: "",
-    brand: "",
     minPrice: "",
     maxPrice: "",
     search: "",
@@ -173,12 +146,14 @@ const productSlice = createSlice({
       state.product = null;
     },
     setFilters: (state, action) => {
+      console.log("productSlice: setFilters called with:", action.payload);
+      console.log("productSlice: Previous filters:", state.filters);
       state.filters = { ...state.filters, ...action.payload };
+      console.log("productSlice: New filters:", state.filters);
     },
     clearFilters: (state) => {
       state.filters = {
         category: "",
-        brand: "",
         minPrice: "",
         maxPrice: "",
         search: "",
@@ -245,22 +220,6 @@ const productSlice = createSlice({
         state.error = action.payload;
       });
 
-    // Get Product By ID
-    builder
-      .addCase(getProductById.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(getProductById.fulfilled, (state, action) => {
-        state.loading = false;
-        state.product = action.payload;
-        state.error = null;
-      })
-      .addCase(getProductById.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
-
     // Create Product
     builder
       .addCase(createProduct.pending, (state) => {
@@ -286,12 +245,12 @@ const productSlice = createSlice({
       .addCase(updateProduct.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.products.findIndex(
-          (p) => p._id === action.payload._id
+          (p) => p.prodId === action.payload.prodId
         );
         if (index !== -1) {
           state.products[index] = action.payload;
         }
-        if (state.product && state.product._id === action.payload._id) {
+        if (state.product && state.product.prodId === action.payload.prodId) {
           state.product = action.payload;
         }
         state.error = null;
@@ -309,8 +268,10 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.loading = false;
-        state.products = state.products.filter((p) => p._id !== action.payload);
-        if (state.product && state.product._id === action.payload) {
+        state.products = state.products.filter(
+          (p) => p.prodId !== action.payload
+        );
+        if (state.product && state.product.prodId === action.payload) {
           state.product = null;
         }
         state.error = null;
@@ -329,12 +290,12 @@ const productSlice = createSlice({
       .addCase(toggleProductStatus.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.products.findIndex(
-          (p) => p._id === action.payload._id
+          (p) => p.prodId === action.payload.prodId
         );
         if (index !== -1) {
           state.products[index] = action.payload;
         }
-        if (state.product && state.product._id === action.payload._id) {
+        if (state.product && state.product.prodId === action.payload.prodId) {
           state.product = action.payload;
         }
         state.error = null;
@@ -355,21 +316,6 @@ const productSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchCategories.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
-
-    // Fetch Brands
-    builder
-      .addCase(fetchBrands.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(fetchBrands.fulfilled, (state, action) => {
-        state.loading = false;
-        state.brands = action.payload;
-        state.error = null;
-      })
-      .addCase(fetchBrands.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

@@ -1,226 +1,266 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts } from "../store/slices/productSlice";
+import ProductCard from "../components/ProductCard";
 import "../styles/HomePage.css";
 
 const HomePage = () => {
   const dispatch = useDispatch();
   const { products, loading } = useSelector((state) => state.products);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    // Fetch featured products (limit to 6)
+    // Fetch featured products (limit to 4)
     dispatch(
-      fetchProducts({ limit: 6, sortBy: "createdAt", sortOrder: "desc" })
+      fetchProducts({ limit: 4, sortBy: "createdAt", sortOrder: "desc" })
     );
   }, [dispatch]);
 
-  const featuredProducts = products.slice(0, 6);
-
-  const categories = [
+  // Carousel data
+  const carouselSlides = [
     {
-      name: "Men's Clothing",
-      image:
-        "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop",
-      link: "/shop?category=men",
+      title: "Unstitched • Festive '25",
+      subtitle: "Discover our exclusive collection of premium fabrics",
+      buttonText: "Shop Now",
+      image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
     },
     {
-      name: "Women's Clothing",
-      image:
-        "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=300&fit=crop",
-      link: "/shop?category=women",
+      title: "Ready to Wear • New Arrivals",
+      subtitle: "Explore our latest ready-to-wear collection",
+      buttonText: "Explore Collection",
+      image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2076&q=80",
     },
     {
-      name: "Accessories",
-      image:
-        "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400&h=300&fit=crop",
-      link: "/shop?category=accessories",
-    },
-    {
-      name: "Footwear",
-      image:
-        "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop",
-      link: "/shop?category=shoes",
+      title: "Dresses Collection",
+      subtitle: "Elegant dresses for every occasion",
+      buttonText: "Shop Dresses",
+      image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
     },
   ];
 
+  // Auto-advance carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+    }, 5000); // Change slide every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [carouselSlides.length]);
+
+  // Manual slide navigation
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+  };
+
+  const goToNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+  };
+
+  const goToPrevSlide = () => {
+    setCurrentSlide(
+      (prev) => (prev - 1 + carouselSlides.length) % carouselSlides.length
+    );
+  };
+
+  const featuredProducts = products.slice(0, 4);
+
   return (
     <div className="homepage">
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="hero-content">
-          <h1>Discover Your Style</h1>
-          <p>
-            Explore our curated collection of trendy clothing and accessories
-            that define your unique personality.
-          </p>
-          <div className="hero-buttons">
-            <Link to="/shop" className="btn btn-lg">
-              Shop Now
-            </Link>
-            <Link to="/shop?category=new" className="btn btn-outline btn-lg">
-              New Arrivals
+      {/* Hero Carousel Section */}
+      <section id="hero-carousel" className="homepage-hero-carousel">
+        <div
+          className="homepage-hero-overlay"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${carouselSlides[currentSlide].image})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        >
+          <div className="homepage-hero-content">
+            <h1 className="homepage-hero-title">
+              {carouselSlides[currentSlide].title}
+            </h1>
+            <p className="homepage-hero-subtitle">
+              {carouselSlides[currentSlide].subtitle}
+            </p>
+            <Link to="/shop" className="homepage-hero-button">
+              {carouselSlides[currentSlide].buttonText}
             </Link>
           </div>
         </div>
-        <div className="hero-image">
-          <img
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=400&fit=crop"
-            alt="Fashion Collection"
-          />
+
+        {/* Carousel Navigation */}
+        <button
+          className="homepage-carousel-nav homepage-carousel-prev"
+          onClick={goToPrevSlide}
+        >
+          <i className="fa-solid fa-chevron-left"></i>
+        </button>
+        <button
+          className="homepage-carousel-nav homepage-carousel-next"
+          onClick={goToNextSlide}
+        >
+          <i className="fa-solid fa-chevron-right"></i>
+        </button>
+
+        {/* Carousel Indicators */}
+        <div className="homepage-hero-indicators">
+          {carouselSlides.map((_, index) => (
+            <button
+              key={index}
+              className={`homepage-hero-indicator ${
+                index === currentSlide ? "active" : ""
+              }`}
+              onClick={() => goToSlide(index)}
+            ></button>
+          ))}
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="categories-section">
-        <div className="container">
-          <h2>Shop by Category</h2>
-          <div className="categories-grid">
-            {categories &&
-              categories.map((category, index) => (
-                <Link key={index} to={category.link} className="category-card">
-                  <div className="category-image">
-                    <img src={category.image} alt={category.name} />
-                  </div>
-                  <div className="category-overlay">
-                    <h3>{category.name}</h3>
-                    <span className="category-arrow">→</span>
-                  </div>
+      {/* Category Banners Section */}
+      <section id="category-banners" className="homepage-category-banners">
+        <div className="homepage-container">
+          <div className="homepage-category-grid">
+            <div
+              className="homepage-category-banner homepage-category-ready-to-wear"
+              style={{
+                backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="homepage-category-content">
+                <h2 className="homepage-category-title">
+                  Ready to Wear • New Arrivals
+                </h2>
+                <Link to="/shop" className="homepage-category-button">
+                  Explore Collection
                 </Link>
-              ))}
+              </div>
+            </div>
+            <div
+              className="homepage-category-banner homepage-category-dresses"
+              style={{
+                backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2076&q=80')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="homepage-category-content">
+                <h2 className="homepage-category-title">Dresses</h2>
+                <Link to="/shop" className="homepage-category-button">
+                  Shop Dresses
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Featured Products Section */}
-      <section className="featured-section">
-        <div className="container">
-          <h2>Featured Products</h2>
+      <section id="featured-products" className="homepage-featured-products">
+        <div className="homepage-container">
+          <div className="homepage-section-header">
+            <h2 className="homepage-section-title">Featured Collection</h2>
+            <p className="homepage-section-subtitle">
+              Curated pieces for the modern woman
+            </p>
+          </div>
           {loading ? (
-            <div className="loading">Loading...</div>
+            <div className="homepage-loading">Loading...</div>
           ) : (
-            <div className="products-grid">
+            <div className="homepage-products-grid">
               {featuredProducts &&
                 featuredProducts.map((product) => (
-                  <div key={product._id} className="product-card">
-                    <div className="product-image">
-                      <img
-                        src={
-                          product.images?.[0] ||
-                          "https://via.placeholder.com/300x400?text=Product"
-                        }
-                        alt={product.name}
-                      />
-                      <div className="product-overlay">
-                        <Link
-                          to={`/product/${product._id}`}
-                          className="btn btn-sm"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="product-info">
-                      <h3 className="product-name">{product.name}</h3>
-                      <p className="product-brand">{product.brand}</p>
-                      <div className="product-price">${product.price}</div>
-                    </div>
-                  </div>
+                  <ProductCard
+                    key={product.prodId || product._id}
+                    product={product}
+                  />
                 ))}
             </div>
           )}
-          <div className="text-center m-auto">
-            <Link to="/shop" className="btn btn-black">
-              View All Products
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="features-section">
-        <div className="container">
-          <div className="features-grid">
-            <div className="feature">
-              <div className="feature-icon">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
+      {/* Styled by You Section */}
+      <section id="styled-by-you" className="homepage-styled-by-you">
+        <div className="homepage-container">
+          <div className="homepage-section-header">
+            <h2 className="homepage-section-title">Styled by You</h2>
+            <p className="homepage-section-subtitle">#UNSHStyle</p>
+          </div>
+          <div className="homepage-instagram-grid">
+            <div
+              className="homepage-instagram-item"
+              style={{
+                backgroundImage: `url('https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2076&q=80')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="homepage-instagram-overlay">
+                <i className="fa-brands fa-instagram homepage-instagram-icon"></i>
               </div>
-              <h3>Free Shipping</h3>
-              <p>Free shipping on orders over $50</p>
             </div>
-            <div className="feature">
-              <div className="feature-icon">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+            <div
+              className="homepage-instagram-item"
+              style={{
+                backgroundImage: `url('https://images.unsplash.com/photo-1483985988355-763728e1935b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="homepage-instagram-overlay">
+                <span className="homepage-instagram-text">Customer Style</span>
               </div>
-              <h3>Quality Guarantee</h3>
-              <p>30-day return policy for all items</p>
             </div>
-            <div className="feature">
-              <div className="feature-icon">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+            <div
+              className="homepage-instagram-item"
+              style={{
+                backgroundImage: `url('https://images.unsplash.com/photo-1509631179647-0177331693ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2076&q=80')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="homepage-instagram-overlay">
+                <span className="homepage-instagram-text">User Photo</span>
               </div>
-              <h3>24/7 Support</h3>
-              <p>Round the clock customer support</p>
             </div>
-            <div className="feature">
-              <div className="feature-icon">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
+            <div
+              className="homepage-instagram-item"
+              style={{
+                backgroundImage: `url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="homepage-instagram-overlay">
+                <span className="homepage-instagram-text">Fashion Post</span>
               </div>
-              <h3>Secure Payment</h3>
-              <p>Safe and secure payment methods</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="cta-section">
-        <div className="container">
-          <div className="cta-content">
-            <h2>Ready to Upgrade Your Wardrobe?</h2>
-            <p>
-              Join thousands of satisfied customers who trust AIreco for their
-              fashion needs.
+      {/* Newsletter Section */}
+      <section id="newsletter" className="homepage-newsletter">
+        <div className="homepage-container">
+          <div className="homepage-newsletter-content">
+            <h2 className="homepage-newsletter-title">Stay in Style</h2>
+            <p className="homepage-newsletter-subtitle">
+              Subscribe to get the latest updates on new collections and
+              exclusive offers
             </p>
-            <Link to="/shop" className="btn btn-lg">
-              Start Shopping
-            </Link>
+            <div className="homepage-newsletter-form">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="homepage-newsletter-input"
+              />
+              <button className="homepage-newsletter-button">Subscribe</button>
+            </div>
           </div>
         </div>
       </section>

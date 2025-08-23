@@ -1,312 +1,386 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { fetchMyOrders } from "../store/slices/orderSlice";
-import { getProfile } from "../store/slices/authSlice";
+import { trackOrder } from "../store/slices/orderTrackingSlice";
 import "../styles/OrderTrackingPage.css";
 
 const OrderTrackingPage = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const { trackedOrder, loading: trackingLoading, error } = useSelector(
+    (state) => state.orderTracking
+  );
+  const [trackingId, setTrackingId] = useState("");
 
-  const { isAuthenticated } = useSelector((state) => state.auth);
-  const { myOrders, loading, error } = useSelector((state) => state.orders);
-
-  const [selectedOrder, setSelectedOrder] = useState(null);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    dispatch(getProfile());
-    dispatch(fetchMyOrders());
-  }, [dispatch, isAuthenticated, navigate]);
-
-  const getStatusColor = (status) => {
-    if (!status || typeof status !== "string") return "#6c757d";
-    switch (status.toLowerCase()) {
-      case "pending":
-        return "#ffc107";
-      case "processing":
-        return "#17a2b8";
-      case "shipped":
-        return "#007bff";
-      case "delivered":
-        return "#28a745";
-      case "cancelled":
-        return "#dc3545";
-      default:
-        return "#6c757d";
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    if (!status || typeof status !== "string") return "📋";
-    switch (status.toLowerCase()) {
-      case "pending":
-        return "⏳";
-      case "processing":
-        return "⚙️";
-      case "shipped":
-        return "📦";
-      case "delivered":
-        return "✅";
-      case "cancelled":
-        return "❌";
-      default:
-        return "📋";
+  const handleTrackOrder = (e) => {
+    e.preventDefault();
+    if (trackingId.trim()) {
+      dispatch(trackOrder(trackingId.trim()));
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch (error) {
-      return "Invalid Date";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatPrice = (price) => {
+    return `$${parseFloat(price || 0).toFixed(2)}`;
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "delivered":
+        return "status-delivered";
+      case "shipped":
+        return "status-shipped";
+      case "processing":
+        return "status-processing";
+      case "confirmed":
+        return "status-confirmed";
+      default:
+        return "status-pending";
     }
   };
 
-  const handleOrderClick = (order) => {
-    setSelectedOrder(selectedOrder?._id === order._id ? null : order);
+  const getTimelineStatus = (orderStatus, step) => {
+    const statusOrder = [
+      "confirmed",
+      "packed",
+      "shipped",
+      "out_for_delivery",
+      "delivered",
+    ];
+    const currentIndex = statusOrder.indexOf(orderStatus?.toLowerCase());
+    const stepIndex = statusOrder.indexOf(step);
+
+    if (stepIndex <= currentIndex) {
+      return "timeline-step-completed";
+    } else {
+      return "timeline-step-pending";
+    }
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  const getTimelineIcon = (orderStatus, step) => {
+    const statusOrder = [
+      "confirmed",
+      "packed",
+      "shipped",
+      "out_for_delivery",
+      "delivered",
+    ];
+    const currentIndex = statusOrder.indexOf(orderStatus?.toLowerCase());
+    const stepIndex = statusOrder.indexOf(step);
 
-  if (loading) {
+    if (stepIndex <= currentIndex) {
+      return "fa-check";
+    } else {
+      switch (step) {
+        case "packed":
+          return "fa-box";
+        case "shipped":
+          return "fa-truck";
+        case "out_for_delivery":
+          return "fa-truck";
+        case "delivered":
+          return "fa-home";
+        default:
+          return "fa-clock";
+      }
+    }
+  };
+
+  if (trackingLoading) {
     return (
       <div className="order-tracking-page">
-        <div className="container">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading your orders...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="order-tracking-page">
-        <div className="container">
-          <div className="error-container">
-            <h2>Error loading orders</h2>
-            <p>{error}</p>
-            <button
-              onClick={() => dispatch(fetchMyOrders())}
-              className="btn btn-primary"
-            >
-              Try Again
-            </button>
-          </div>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Tracking your order...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="order-tracking-page">
-      <div className="container">
-        <div className="page-header">
-          <h1>Order Tracking</h1>
-          <p>Track the status of your orders and view order details</p>
-        </div>
+    <div id="main" className="order-tracking-main">
+      <main id="orders-content" className="orders-content">
+        <div className="orders-container">
+          {/* Tracking Form */}
+          <div className="tracking-form-container">
+            <div className="tracking-form">
+              <h2>Track Your Order</h2>
+              <p>Enter your tracking ID to check the status of your order</p>
 
-        {!myOrders || myOrders.length === 0 ? (
-          <div className="no-orders">
-            <div className="no-orders-icon">📦</div>
-            <h2>No orders yet</h2>
-            <p>
-              You haven't placed any orders yet. Start shopping to see your
-              orders here!
-            </p>
-            <button
-              onClick={() => navigate("/shop")}
-              className="btn btn-primary"
-            >
-              Start Shopping
-            </button>
-          </div>
-        ) : (
-          <div className="orders-container">
-            <div className="orders-list">
-              <h2>Your Orders ({myOrders ? myOrders.length : 0})</h2>
-
-              {myOrders &&
-                myOrders.map((order) => (
-                  <div
-                    key={order._id}
-                    className={`order-card ${
-                      selectedOrder?._id === order._id ? "expanded" : ""
-                    }`}
-                    onClick={() => handleOrderClick(order)}
-                  >
-                    <div className="order-header">
-                      <div className="order-info">
-                        <div className="order-id">
-                          <span className="label">Order ID:</span>
-                          <span className="value">{order._id.slice(-8)}</span>
-                        </div>
-                        <div className="order-date">
-                          <span className="label">Ordered:</span>
-                          <span className="value">
-                            {formatDate(order.createdAt)}
-                          </span>
-                        </div>
-                        <div className="order-total">
-                          <span className="label">Total:</span>
-                          <span className="value">${order.totalAmount}</span>
-                        </div>
-                      </div>
-
-                      <div className="order-status">
-                        <span
-                          className="status-badge"
-                          style={{
-                            backgroundColor: getStatusColor(order.status),
-                          }}
-                        >
-                          {getStatusIcon(order.status)} {order.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    {selectedOrder?._id === order._id && (
-                      <div className="order-details">
-                        <div className="order-items">
-                          <h4>Order Items</h4>
-                          {order.orderItems &&
-                            order.orderItems.map((item, index) => (
-                              <div
-                                key={`${order._id}-item-${index}`}
-                                className="order-item"
-                              >
-                                <div className="item-info">
-                                  <span className="item-name">{item.name}</span>
-                                  <span className="item-variants">
-                                    {item.size && `Size: ${item.size}`}
-                                    {item.size && item.color && " | "}
-                                    {item.color && `Color: ${item.color}`}
-                                  </span>
-                                </div>
-                                <div className="item-details">
-                                  <span className="item-quantity">
-                                    Qty: {item.quantity}
-                                  </span>
-                                  <span className="item-price">
-                                    ${item.price}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-
-                        <div className="order-shipping">
-                          <h4>Shipping Address</h4>
-                          <div className="shipping-address">
-                            <p>{order.shippingAddress?.street}</p>
-                            <p>
-                              {order.shippingAddress?.city},{" "}
-                              {order.shippingAddress?.state}{" "}
-                              {order.shippingAddress?.zipCode}
-                            </p>
-                            <p>{order.shippingAddress?.country}</p>
-                          </div>
-                        </div>
-
-                        <div className="order-payment">
-                          <h4>Payment Information</h4>
-                          <div className="payment-info">
-                            <p>
-                              <strong>Status:</strong> {order.paymentStatus}
-                            </p>
-                            <p>
-                              <strong>Method:</strong> {order.paymentMethod}
-                            </p>
-                          </div>
-                        </div>
-
-                        {order.trackingNumber && (
-                          <div className="order-tracking">
-                            <h4>Tracking Information</h4>
-                            <div className="tracking-info">
-                              <p>
-                                <strong>Tracking Number:</strong>{" "}
-                                {order.trackingNumber}
-                              </p>
-                              {order.trackingUpdates &&
-                                order.trackingUpdates.length > 0 && (
-                                  <div className="tracking-updates">
-                                    <h5>Recent Updates</h5>
-                                    {order.trackingUpdates &&
-                                      order.trackingUpdates.map(
-                                        (update, index) => (
-                                          <div
-                                            key={index}
-                                            className="tracking-update"
-                                          >
-                                            <span className="update-date">
-                                              {formatDate(update.date)}
-                                            </span>
-                                            <span className="update-status">
-                                              {update.status}
-                                            </span>
-                                            <span className="update-location">
-                                              {update.location}
-                                            </span>
-                                          </div>
-                                        )
-                                      )}
-                                  </div>
-                                )}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="order-actions">
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => window.print()}
-                          >
-                            Print Order
-                          </button>
-                          {order.status === "pending" && (
-                            <button
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    "Are you sure you want to cancel this order?"
-                                  )
-                                ) {
-                                  // Handle order cancellation
-                                  console.log("Cancel order:", order._id);
-                                }
-                              }}
-                            >
-                              Cancel Order
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <form onSubmit={handleTrackOrder} className="tracking-input-form">
+                <div className="input-group">
+                  <input
+                    type="text"
+                    value={trackingId}
+                    onChange={(e) => setTrackingId(e.target.value)}
+                    placeholder="Enter tracking ID (e.g., UNSH-2024-001)"
+                    className="tracking-input"
+                    required
+                  />
+                  <button type="submit" className="track-btn">
+                    Track Order
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="error-container">
+              <h2>Error</h2>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* Tracked Order Display */}
+          {trackedOrder && (
+            <div className="order-card">
+              <div className="order-card-content">
+                <div className="order-header">
+                  <div className="order-header-left">
+                    <h3>
+                      Order #
+                      {trackedOrder.trackingId ||
+                        `UNSH-${new Date(
+                          trackedOrder.createdAt
+                        ).getFullYear()}-001`}
+                    </h3>
+                    <span
+                      className={`status-badge ${getStatusColor(
+                        trackedOrder.status
+                      )}`}
+                    >
+                      {trackedOrder.status}
+                    </span>
+                  </div>
+                  <div className="order-header-right">
+                    <p className="order-date">
+                      {formatDate(trackedOrder.createdAt)}
+                    </p>
+                    <p className="order-total">
+                      {formatPrice(trackedOrder.totalAmount)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="order-items-section">
+                  <div className="order-items-header">
+                    <h4>Order Items</h4>
+                  </div>
+
+                  <div className="order-items-list">
+                    {trackedOrder.items &&
+                      trackedOrder.items.map((item, itemIndex) => (
+                        <div key={itemIndex} className="order-item">
+                          <div className="item-image">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="product-image"
+                              />
+                            ) : (
+                              <span className="image-placeholder">Product</span>
+                            )}
+                          </div>
+                          <div className="item-details">
+                            <h5>{item.name || `Item ${itemIndex + 1}`}</h5>
+                            <p>
+                              Size: {item.size || "N/A"} • Qty:{" "}
+                              {item.quantity || 1}
+                            </p>
+                          </div>
+                          <p className="item-price">
+                            {formatPrice(item.price)}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="delivery-timeline">
+                  <h4>Delivery Timeline</h4>
+                  <div className="timeline-container">
+                    <div className="timeline-step">
+                      <div
+                        className={`timeline-icon ${getTimelineStatus(
+                          trackedOrder.status,
+                          "confirmed"
+                        )}`}
+                      >
+                        <i
+                          className={`fa-solid ${getTimelineIcon(
+                            trackedOrder.status,
+                            "confirmed"
+                          )}`}
+                        ></i>
+                      </div>
+                      <p className="timeline-label">Confirmed</p>
+                      <p className="timeline-date">
+                        {formatDate(trackedOrder.createdAt)}
+                      </p>
+                    </div>
+                    <div className="timeline-connector completed"></div>
+                    <div className="timeline-step">
+                      <div
+                        className={`timeline-icon ${getTimelineStatus(
+                          trackedOrder.status,
+                          "packed"
+                        )}`}
+                      >
+                        <i
+                          className={`fa-solid ${getTimelineIcon(
+                            trackedOrder.status,
+                            "packed"
+                          )}`}
+                        ></i>
+                      </div>
+                      <p className="timeline-label">Packed</p>
+                      <p className="timeline-date">
+                        {["processing", "confirmed"].includes(
+                          trackedOrder.status
+                        )
+                          ? "Pending"
+                          : formatDate(trackedOrder.createdAt)}
+                      </p>
+                    </div>
+                    <div
+                      className={`timeline-connector ${
+                        ["processing", "confirmed"].includes(
+                          trackedOrder.status
+                        )
+                          ? "pending"
+                          : "completed"
+                      }`}
+                    ></div>
+                    <div className="timeline-step">
+                      <div
+                        className={`timeline-icon ${getTimelineStatus(
+                          trackedOrder.status,
+                          "shipped"
+                        )}`}
+                      >
+                        <i
+                          className={`fa-solid ${getTimelineIcon(
+                            trackedOrder.status,
+                            "shipped"
+                          )}`}
+                        ></i>
+                      </div>
+                      <p className="timeline-label">Shipped</p>
+                      <p className="timeline-date">
+                        {["processing", "confirmed", "packed"].includes(
+                          trackedOrder.status
+                        )
+                          ? "Pending"
+                          : formatDate(trackedOrder.createdAt)}
+                      </p>
+                    </div>
+                    <div
+                      className={`timeline-connector ${
+                        ["processing", "confirmed", "packed"].includes(
+                          trackedOrder.status
+                        )
+                          ? "pending"
+                          : "completed"
+                      }`}
+                    ></div>
+                    <div className="timeline-step">
+                      <div
+                        className={`timeline-icon ${getTimelineStatus(
+                          trackedOrder.status,
+                          "out_for_delivery"
+                        )}`}
+                      >
+                        <i
+                          className={`fa-solid ${getTimelineIcon(
+                            trackedOrder.status,
+                            "out_for_delivery"
+                          )}`}
+                        ></i>
+                      </div>
+                      <p className="timeline-label">Out for Delivery</p>
+                      <p className="timeline-date">
+                        {[
+                          "processing",
+                          "confirmed",
+                          "packed",
+                          "shipped",
+                        ].includes(trackedOrder.status)
+                          ? "Pending"
+                          : formatDate(trackedOrder.createdAt)}
+                      </p>
+                    </div>
+                    <div
+                      className={`timeline-connector ${
+                        [
+                          "processing",
+                          "confirmed",
+                          "packed",
+                          "shipped",
+                        ].includes(trackedOrder.status)
+                          ? "pending"
+                          : "completed"
+                      }`}
+                    ></div>
+                    <div className="timeline-step">
+                      <div
+                        className={`timeline-icon ${getTimelineStatus(
+                          trackedOrder.status,
+                          "delivered"
+                        )}`}
+                      >
+                        <i
+                          className={`fa-solid ${getTimelineIcon(
+                            trackedOrder.status,
+                            "delivered"
+                          )}`}
+                        ></i>
+                      </div>
+                      <p className="timeline-label">Delivered</p>
+                      <p className="timeline-date">
+                        {trackedOrder.status !== "delivered"
+                          ? "Pending"
+                          : formatDate(trackedOrder.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="order-actions">
+                  {trackedOrder.status === "delivered" && (
+                    <button className="btn-primary">View Invoice</button>
+                  )}
+                  {trackedOrder.status === "shipped" && (
+                    <button className="btn-primary">Track Package</button>
+                  )}
+                  <button className="btn-secondary">Contact Support</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* No Order Tracked Yet */}
+          {!trackedOrder && !error && (
+            <div className="no-orders">
+              <div className="no-orders-icon">📦</div>
+              <h2>Track Your Order</h2>
+              <p>
+                Enter your tracking ID above to see the status and details of
+                your order.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };

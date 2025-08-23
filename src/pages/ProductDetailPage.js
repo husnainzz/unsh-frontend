@@ -1,74 +1,199 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProductDetails } from "../store/slices/productSlice";
-import { addToCart } from "../store/slices/cartSlice";
+import {
+  fetchProductDetails,
+  fetchProducts,
+} from "../store/slices/productSlice";
+import { addToCart as addToCartAction } from "../store/slices/cartSlice";
+import {
+  addToWishlist,
+  removeFromWishlist,
+} from "../store/slices/wishlistSlice";
+import ProductCard from "../components/ProductCard";
 import "../styles/ProductDetailPage.css";
 
 const ProductDetailPage = () => {
-  const { id } = useParams();
+  const { prodId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const { product, loading, error } = useSelector((state) => state.products);
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { userInfo } = useSelector((state) => state.auth);
+  const { items: wishlistItems } = useSelector((state) => state.wishlist);
+
+  // Get new arrivals for Complete the Look section
+  const newArrivals = useSelector((state) => {
+    const allProducts = state.products.products || [];
+    const currentProductId = product?.prodId || product?._id;
+
+    return allProducts
+      .filter((p) => {
+        // Filter out the current product and ensure product has required fields
+        const productId = p.prodId || p._id;
+        return productId && productId !== currentProductId && p.name && p.price;
+      })
+      .sort((a, b) => {
+        // Sort by creation date (newest first), fallback to name if no date
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        if (dateA.getTime() === dateB.getTime()) {
+          return a.name.localeCompare(b.name);
+        }
+        return dateB - dateA;
+      })
+      .slice(0, 4); // Take only 4 products
+  });
 
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [activeTab, setActiveTab] = useState("details");
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showSuccessMessage, setShowSuccessMessage] = useState("");
+
+  // Check if product is in wishlist
+  const isFavorite =
+    product &&
+    wishlistItems.some(
+      (item) =>
+        (item.prodId || item.product?.prodId) ===
+        (product.prodId || product._id)
+    );
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchProductDetails(id));
+    if (prodId) {
+      dispatch(fetchProductDetails(prodId));
     }
-  }, [dispatch, id]);
+  }, [dispatch, prodId]);
+
+  // Fetch products list for New Arrivals section
+  useEffect(() => {
+    dispatch(fetchProducts({ limit: 20 })); // Fetch more products to have variety for New Arrivals
+  }, [dispatch]);
+
+  // Set default size and color when product loads
+  useEffect(() => {
+    if (product) {
+      if (product.sizes && product.sizes.length > 0) {
+        setSelectedSize(product.sizes[0]);
+      }
+      if (product.colors && product.colors.length > 0) {
+        setSelectedColor(product.colors[0]);
+      }
+    }
+  }, [product]);
+
+  // Reset selected image when product changes
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [product]);
 
   const handleAddToCart = () => {
-    if (!selectedSize || !selectedColor) {
-      alert("Please select both size and color");
+    if (!selectedSize) {
+      alert("Please select a size");
+      return;
+    }
+
+    if (availableColors.length > 1 && !selectedColor) {
+      alert("Please select a color");
       return;
     }
 
     const cartItem = {
-      product: product,
+      product: {
+        ...product,
+        prodId: product.prodId || product._id,
+      },
       size: selectedSize,
       color: selectedColor,
-      quantity: parseInt(quantity),
+      quantity: quantity,
+      price: product.price,
     };
 
-    dispatch(addToCart(cartItem));
-    alert("Product added to cart!");
+    dispatch(addToCartAction(cartItem));
+
+    // Show success message
+    setShowSuccessMessage("Added to cart successfully!");
+    setTimeout(() => setShowSuccessMessage(""), 3000);
   };
 
-  const handleBuyNow = () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
+  const handleQuantityChange = (change) => {
+    const newQuantity = quantity + change;
+    if (newQuantity >= 1 && newQuantity <= 10) {
+      setQuantity(newQuantity);
+    }
+  };
+
+  const handleFavoriteToggle = () => {
+    const productId = product.prodId || product._id;
+
+    if (isFavorite) {
+      // Remove from wishlist
+      dispatch(removeFromWishlist({ productId }));
+      setShowSuccessMessage("Removed from wishlist!");
+    } else {
+      // Add to wishlist
+      dispatch(
+        addToWishlist({
+          product: {
+            ...product,
+            prodId: productId,
+          },
+        })
+      );
+      setShowSuccessMessage("Added to wishlist successfully!");
     }
 
-    if (!selectedSize || !selectedColor) {
-      alert("Please select both size and color");
-      return;
+    setTimeout(() => setShowSuccessMessage(""), 3000);
+  };
+
+  const getProductImage = (index = 0) => {
+    if (!product || !product.images || product.images.length === 0) {
+      return "/placeholder-image.jpg";
     }
 
-    // Add to cart and navigate to checkout
-    const cartItem = {
-      product: product,
-      size: selectedSize,
-      color: selectedColor,
-      quantity: parseInt(quantity),
-    };
+    // Ensure index is within bounds
+    if (index >= product.images.length) {
+      index = 0; // Fallback to first image if index is out of bounds
+    }
 
-    dispatch(addToCart(cartItem));
-    navigate("/checkout");
+    // Return image at specific index
+    const image = product.images[index];
+    return image?.url || image || product.images[0]?.url || product.images[0];
+  };
+
+  const formatPrice = (price) => {
+    return `PKR ${price?.toLocaleString() || "0"}`;
+  };
+
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating || 0);
+    const hasHalfStar = (rating || 0) % 1 !== 0;
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <i key={i} className="fa-solid fa-star text-yellow-400"></i>
+        );
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <i key={i} className="fa-solid fa-star-half-alt text-yellow-400"></i>
+        );
+      } else {
+        stars.push(
+          <i key={i} className="fa-regular fa-star text-gray-300"></i>
+        );
+      }
+    }
+    return stars;
   };
 
   if (loading) {
     return (
       <div className="product-detail-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading product details...</p>
+        <div className="loading-spinner">Loading...</div>
       </div>
     );
   }
@@ -77,115 +202,119 @@ const ProductDetailPage = () => {
     return (
       <div className="product-detail-error">
         <h2>Product not found</h2>
-        <p>Sorry, we couldn't find the product you're looking for.</p>
-        <button onClick={() => navigate("/shop")} className="btn btn-primary">
-          Back to Shop
-        </button>
+        <button onClick={() => navigate("/shop")}>Back to Shop</button>
       </div>
     );
   }
 
-  return (
-    <div className="product-detail-page">
-      <div className="container">
-        <nav className="breadcrumb">
-          <span onClick={() => navigate("/shop")} className="breadcrumb-link">
-            Shop
-          </span>
-          <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-current">{product.name}</span>
-        </nav>
+  // Use actual product sizes or provide fallback
+  const availableSizes =
+    product.sizes && product.sizes.length > 0 ? product.sizes : ["One Size"];
 
+  // Use actual product colors or provide fallback
+  const availableColors =
+    product.colors && product.colors.length > 0 ? product.colors : ["Black"];
+
+  // Color mapping for better visual representation
+  const getColorValue = (colorName) => {
+    const colorMap = {
+      black: "#000000",
+      white: "#ffffff",
+      red: "#dc2626",
+      blue: "#2563eb",
+      green: "#16a34a",
+      yellow: "#eab308",
+      pink: "#ec4899",
+      purple: "#9333ea",
+      orange: "#ea580c",
+      brown: "#92400e",
+      gray: "#6b7280",
+      navy: "#1e3a8a",
+      maroon: "#991b1b",
+      olive: "#65a30d",
+      teal: "#0d9488",
+      coral: "#f97316",
+      gold: "#f59e0b",
+      silver: "#9ca3af",
+    };
+
+    const normalizedColor = colorName.toLowerCase();
+    return colorMap[normalizedColor] || normalizedColor;
+  };
+
+  return (
+    <main id="main" className="product-detail-main">
+      <div className="product-detail-container">
         <div className="product-detail-grid">
-          {/* Product Images */}
-          <div className="product-images">
-            <div className="main-image">
-              <img
-                src={
-                  product.images?.[selectedImage] || "/placeholder-product.jpg"
-                }
-                alt={product.name}
-                onError={(e) => {
-                  e.target.src = "/placeholder-product.jpg";
-                }}
-              />
+          {/* Product Images Section */}
+          <section id="product-images" className="product-images-section">
+            <div className="main-product-image-container">
+              <div className="main-product-image">
+                <img
+                  src={
+                    product.images && product.images.length > 0
+                      ? product.images[selectedImage]?.url ||
+                        product.images[selectedImage] ||
+                        product.images[0]?.url ||
+                        product.images[0]
+                      : "/placeholder-image.jpg"
+                  }
+                  alt={product.name}
+                  className="product-main-img"
+                />
+                <button className="zoom-button">
+                  <i className="fa-solid fa-expand zoom-icon"></i>
+                </button>
+              </div>
             </div>
+
             <div className="thumbnail-images">
-              {product.images &&
-                product.images.map((image, index) => (
+              {product.images && product.images.length > 0 ? (
+                product.images.slice(0, 4).map((image, index) => (
                   <div
                     key={index}
-                    className={`thumbnail ${
+                    className={`thumbnail-item ${
                       selectedImage === index ? "active" : ""
                     }`}
-                    onClick={() => setSelectedImage(index)}
+                    onClick={() => {
+                      setSelectedImage(index);
+                    }}
                   >
                     <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      onError={(e) => {
-                        e.target.src = "/placeholder-product.jpg";
-                      }}
+                      src={image.url || image}
+                      alt={`${product.name} view ${index + 1}`}
+                      className="thumbnail-img"
                     />
                   </div>
-                ))}
-            </div>
-          </div>
-
-          {/* Product Info */}
-          <div className="product-info">
-            <h1 className="product-name">{product.name}</h1>
-            <div className="product-brand">{product.brand}</div>
-
-            <div className="product-rating">
-              <div className="stars">
-                {[...Array(5)].map((_, index) => (
-                  <span
-                    key={index}
-                    className={`star ${
-                      index <
-                      Math.floor(
-                        typeof product.rating === "object"
-                          ? product.rating.average || 0
-                          : product.rating
-                      )
-                        ? "filled"
-                        : ""
-                    }`}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-              <span className="rating-text">
-                {typeof product.rating === "object"
-                  ? product.rating.average || 0
-                  : product.rating}{" "}
-                out of 5
-              </span>
-            </div>
-
-            <div className="product-price">
-              <span className="current-price">${product.price}</span>
-              {product.originalPrice && (
-                <span className="original-price">${product.originalPrice}</span>
+                ))
+              ) : (
+                // Show placeholder if no images
+                <div className="thumbnail-item">
+                  <img
+                    src="/placeholder-image.jpg"
+                    alt="No product image"
+                    className="thumbnail-img"
+                  />
+                </div>
               )}
             </div>
+          </section>
 
-            <div className="product-description">
-              <p>{product.description}</p>
+          {/* Product Info Section */}
+          <section id="product-info" className="product-info-section">
+            <div className="product-header">
+              <h1 className="product-title">{product.name}</h1>
+              <p className="product-price">{formatPrice(product.price)}</p>
             </div>
 
-            {/* Size Selection */}
-            <div className="option-group">
-              <label className="option-label">Size</label>
-              <div className="size-options">
-                {product.sizes &&
-                  product.sizes.map((size) => (
+            <div className="product-options">
+              <div className="option-group">
+                <label className="option-label">Size</label>
+                <div className="option-values">
+                  {availableSizes.map((size) => (
                     <button
                       key={size}
-                      type="button"
-                      className={`size-option ${
+                      className={`option-value ${
                         selectedSize === size ? "selected" : ""
                       }`}
                       onClick={() => setSelectedSize(size)}
@@ -193,116 +322,263 @@ const ProductDetailPage = () => {
                       {size}
                     </button>
                   ))}
+                </div>
               </div>
-            </div>
 
-            {/* Color Selection */}
-            <div className="option-group">
-              <label className="option-label">Color</label>
-              <div className="color-options">
-                {product.colors &&
-                  product.colors.map((color) => (
+              {/* Color Selection */}
+              <div className="option-group">
+                <label className="option-label">Color</label>
+                <div className="option-values">
+                  {availableColors.map((color) => (
                     <button
                       key={color}
-                      type="button"
-                      className={`color-option ${
+                      className={`option-value color-option ${
                         selectedColor === color ? "selected" : ""
                       }`}
-                      onClick={() => setSelectedColor(color.name)}
+                      onClick={() => setSelectedColor(color)}
                       style={{
-                        backgroundColor: color.hexCode,
+                        backgroundColor: getColorValue(color),
+                        border:
+                          selectedColor === color
+                            ? "3px solid #111827"
+                            : "1px solid #d1d5db",
                       }}
-                      title={color.name || color}
                     >
-                      {selectedColor === color.name && (
-                        <span className="checkmark">✓</span>
-                      )}
+                      <span className="color-name">{color}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="option-group">
+                <label className="option-label">Quantity</label>
+                <div className="quantity-selector">
+                  <span className="quantity-label">Qty:</span>
+                  <div className="quantity-controls">
+                    <button
+                      className="quantity-btn"
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={quantity <= 1}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      className="quantity-input"
+                      value={quantity}
+                      onChange={(e) => {
+                        const newQuantity = parseInt(e.target.value) || 1;
+                        if (newQuantity >= 1 && newQuantity <= 10) {
+                          setQuantity(newQuantity);
+                        }
+                      }}
+                      min="1"
+                      max="10"
+                    />
+                    <button
+                      className="quantity-btn"
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={quantity >= 10}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Quantity Selection */}
-            <div className="option-group">
-              <label className="option-label">Quantity</label>
-              <div className="quantity-controls">
-                <button
-                  type="button"
-                  className="quantity-btn"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
-                >
-                  -
-                </button>
-                <span className="quantity-display">{quantity}</span>
-                <button
-                  type="button"
-                  className="quantity-btn"
-                  onClick={() => setQuantity(quantity + 1)}
-                  disabled={quantity >= product.stock}
-                >
-                  +
-                </button>
-              </div>
-              <div className="stock-info">
-                {product.stock > 0 ? (
-                  <span className="in-stock">
-                    {product.stock} items in stock
-                  </span>
-                ) : (
-                  <span className="out-of-stock">Out of stock</span>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
             <div className="product-actions">
-              <button
-                className="btn btn-primary btn-large"
-                onClick={handleAddToCart}
-                disabled={
-                  !selectedSize || !selectedColor || product.stock === 0
-                }
-              >
-                Add to Cart
+              <button className="add-to-cart-btn" onClick={handleAddToCart}>
+                <i className="fa-solid fa-shopping-cart"></i>
+                <span>Add to Cart - {formatPrice(product.price)}</span>
               </button>
               <button
-                className="btn btn-secondary btn-large"
-                onClick={handleBuyNow}
-                disabled={
-                  !selectedSize || !selectedColor || product.stock === 0
-                }
+                className={`wishlist-btn ${
+                  isFavorite ? "favorite-active" : ""
+                }`}
+                onClick={handleFavoriteToggle}
               >
-                Buy Now
+                <i
+                  className={`fa-${isFavorite ? "solid" : "regular"} fa-heart`}
+                ></i>
+                <span>
+                  {isFavorite ? "Remove from Wishlist" : "Add to Wishlist"}
+                </span>
               </button>
             </div>
 
-            {/* Additional Info */}
-            <div className="additional-info">
-              <div className="info-item">
-                <span className="info-label">Category:</span>
-                <span className="info-value">{product.category}</span>
+            {/* Success Message */}
+            {showSuccessMessage && (
+              <div className="success-message">
+                <i className="fa-solid fa-check-circle"></i>
+                <span>{showSuccessMessage}</span>
               </div>
-              <div className="info-item">
-                <span className="info-label">SKU:</span>
-                <span className="info-value">{product._id.slice(-8)}</span>
+            )}
+
+            {/* Guest User Info */}
+            {!userInfo && (
+              <div className="guest-info">
+                <i className="fa-solid fa-info-circle"></i>
+                <span>
+                  You can add items to cart and wishlist as a guest. Sign in to
+                  sync with your account.
+                </span>
               </div>
+            )}
+
+            <div className="product-description">
+              <p className="description-text">
+                {product.description ||
+                  "Elegant design featuring premium materials and craftsmanship. Perfect for special occasions or elevated everyday wear."}
+              </p>
             </div>
-          </div>
+
+            <div className="product-details-info">
+              <p>
+                <strong>Fabric:</strong> Premium quality materials
+              </p>
+              <p>
+                <strong>Care:</strong> Follow care instructions on label
+              </p>
+              <p>
+                <strong>Origin:</strong> Ethically made
+              </p>
+            </div>
+          </section>
         </div>
 
-        {/* Product Details Tabs */}
-        <div className="product-tabs">
-          <div className="tab-content">
-            <h3>Product Details</h3>
-            <div className="tab-text">
-              <p>{product.description}</p>
-              {/* Add more detailed product information here */}
-            </div>
+        {/* Product Details Tabs Section */}
+        <section id="product-details" className="product-details-tabs">
+          <div className="tabs-header">
+            <button
+              className={`tab-button ${
+                activeTab === "details" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("details")}
+            >
+              Details & Care
+            </button>
+            <button
+              className={`tab-button ${
+                activeTab === "delivery" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("delivery")}
+            >
+              Delivery & Returns
+            </button>
+            <button
+              className={`tab-button ${
+                activeTab === "size-guide" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("size-guide")}
+            >
+              Size Guide
+            </button>
           </div>
-        </div>
+
+          <div className="tabs-content">
+            {activeTab === "details" && (
+              <div className="tab-content active">
+                <h3>Product Details</h3>
+                <p>
+                  Premium quality materials with expert craftsmanship. This
+                  piece features a flattering fit and design that offers
+                  versatile styling options.
+                </p>
+                <p>
+                  Made to be comfortable and durable, perfect for various
+                  occasions. The attention to detail ensures a premium
+                  experience.
+                </p>
+
+                <h3>Care Instructions</h3>
+                <p>
+                  Follow care label instructions carefully. Use appropriate
+                  temperature settings and avoid harsh chemicals.
+                </p>
+                <p>
+                  Store properly when not in use and consider professional
+                  cleaning for best results. Handle with care to maintain
+                  quality.
+                </p>
+              </div>
+            )}
+
+            {activeTab === "delivery" && (
+              <div className="tab-content active">
+                <h3>Delivery Information</h3>
+                <p>
+                  Standard delivery takes 3-5 business days. Express delivery
+                  available for 1-2 business days.
+                </p>
+                <p>
+                  Free shipping on orders over PKR 2000. International shipping
+                  available to select countries.
+                </p>
+
+                <h3>Returns & Exchanges</h3>
+                <p>
+                  30-day return policy for unworn items with original tags.
+                  Exchanges available for different sizes or colors.
+                </p>
+                <p>
+                  Return shipping is free for defective items. Contact customer
+                  service for assistance.
+                </p>
+              </div>
+            )}
+
+            {activeTab === "size-guide" && (
+              <div className="tab-content active">
+                <h3>Size Guide</h3>
+                <p>
+                  Use our size guide to find your perfect fit. Measure your
+                  bust, waist, and hips for accurate sizing.
+                </p>
+
+                <div className="product-specs">
+                  <div className="spec-item">
+                    <span className="spec-label">Size</span>
+                    <span className="spec-value">XS</span>
+                  </div>
+                  <div className="spec-item">
+                    <span className="spec-label">Bust</span>
+                    <span className="spec-value">32-34"</span>
+                  </div>
+                  <div className="spec-item">
+                    <span className="spec-label">Waist</span>
+                    <span className="spec-value">26-28"</span>
+                  </div>
+                  <div className="spec-item">
+                    <span className="spec-label">Hips</span>
+                    <span className="spec-value">36-38"</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Related Products Section */}
+        <section id="related-products" className="related-products">
+          <h2>New Arrivals</h2>
+          <div className="related-products-grid">
+            {newArrivals.length > 0 ? (
+              newArrivals.map((newProduct) => (
+                <ProductCard
+                  key={newProduct._id || newProduct.prodId}
+                  product={newProduct}
+                />
+              ))
+            ) : (
+              <div className="no-products-message">
+                <p>No additional products available at the moment.</p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 };
 

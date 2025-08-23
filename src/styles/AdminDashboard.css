@@ -1,19 +1,21 @@
 /* Modern Admin Dashboard Styling */
+/* IMPORTANT: All styles are scoped to .operations-app to prevent conflicts with other components */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
-* {
+/* Admin Dashboard specific styles - scoped to prevent conflicts */
+.operations-app * {
   font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Hide scrollbars */
-::-webkit-scrollbar {
+/* Hide scrollbars for admin dashboard only */
+.operations-app ::-webkit-scrollbar {
   display: none;
 }
 
-html, body {
+.operations-app {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -25,13 +27,13 @@ html, body {
 }
 
 /* Header */
-.header {
+.operations-app .header {
   background: white;
   border-bottom: 1px solid #e5e7eb;
   padding: 0.6rem 1rem;
 }
 
-.header-content {
+.operations-app .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -39,41 +41,41 @@ html, body {
   margin: 0 auto;
 }
 
-.header-left {
+.operations-app .header-left {
   display: flex;
   align-items: center;
   gap: 1rem;
   
 }
 
-.logo {
+.operations-app .logo {
   width: 2rem;
   height: 2rem;
   background: #1f2937;
   border-radius: 0.25rem;
 }
 
-.header-left h1 {
+.operations-app .header-left h1 {
   font-size: 1.25rem;
   font-weight: 600;
   color: #111827;
   margin: 0;
 }
 
-.header-right {
+.operations-app .header-right {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.notification-icon {
+.operations-app .notification-icon {
   position: relative;
   color: #6b7280;
   cursor: pointer;
   padding: 0.5rem;
 }
 
-.notification-badge {
+.operations-app .notification-badge {
   position: absolute;
   top: -0.25rem;
   right: -0.25rem;
@@ -83,14 +85,14 @@ html, body {
   border-radius: 50%;
 }
 
-.user-avatar {
+.operations-app .user-avatar {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
 }
 
 /* Logout Button */
-.logout-btn {
+.operations-app .logout-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -105,21 +107,21 @@ html, body {
   transition: all 0.2s ease;
 }
 
-.logout-btn:hover {
+.operations-app .logout-btn:hover {
   background: #dc2626;
   transform: translateY(-1px);
 }
 
-.logout-btn i {
+.operations-app .logout-btn i {
   font-size: 0.875rem;
 }
 
-.logout-btn span {
+.operations-app .logout-btn span {
   font-size: 0.875rem;
 }
 
 /* Dashboard Container */
-.dashboard-container {
+.operations-app .dashboard-container {
   display: flex;
   max-width: 1400px;
   margin: 0 auto;
@@ -127,7 +129,7 @@ html, body {
 }
 
 /* Sidebar */
-.sidebar {
+.operations-app .sidebar {
   width: 18rem;
   background: #f9fafb;
   border-right: 1px solid #e5e7eb;
@@ -137,11 +139,11 @@ html, body {
   flex-shrink: 0;
 }
 
-.sidebar-nav {
+.operations-app .sidebar-nav {
   padding: 1.5rem;
 }
 
-.nav-item {
+.operations-app .nav-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -154,24 +156,24 @@ html, body {
   font-weight: 500;
 }
 
-.nav-item:hover {
+.operations-app .nav-item:hover {
   background-color: #f3f4f6;
   transform: translateX(4px);
 }
 
-.nav-item.active {
+.operations-app .nav-item.active {
   background-color: #111827;
   color: white;
   box-shadow: 0 4px 12px rgba(17, 24, 39, 0.3);
 }
 
-.nav-item i {
+.operations-app .nav-item i {
   width: 1.25rem;
   text-align: center;
   font-size: 1.125rem;
 }
 
-.nav-item span {
+.operations-app .nav-item span {
   font-size: 0.875rem;
 }
 
@@ -332,6 +334,11 @@ html, body {
   font-weight: 600;
   color: #111827;
   margin: 0;
+}
+
+.card-header .header-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .card-body {
@@ -513,19 +520,19 @@ html, body {
 }
 
 /* Tables */
-.table-container {
+.operations-app .table-container {
   overflow-x: auto;
   border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
   background: white;
 }
 
-.dashboard-table {
+.operations-app .dashboard-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.dashboard-table th {
+.operations-app .dashboard-table th {
   background: #f9fafb;
   padding: 1rem 1.5rem;
   text-align: left;
@@ -537,23 +544,23 @@ html, body {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.dashboard-table td {
+.operations-app .dashboard-table td {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
   font-size: 0.875rem;
   color: #111827;
 }
 
-.dashboard-table tbody tr:hover {
+.operations-app .dashboard-table tbody tr:hover {
   background: #f9fafb;
 }
 
-.dashboard-table tbody tr:last-child td {
+.operations-app .dashboard-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* Status Badges */
-.status-badge {
+.operations-app .status-badge {
   padding: 0.375rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -744,7 +751,7 @@ html, body {
 }
 
 /* Buttons */
-.btn {
+.operations-app .btn {
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
@@ -757,44 +764,44 @@ html, body {
   gap: 0.5rem;
 }
 
-.btn-primary {
+.operations-app .btn-primary {
   background: #111827;
   color: white;
 }
 
-.btn-primary:hover {
+.operations-app .btn-primary:hover {
   background: #374151;
 }
 
-.btn-secondary {
+.operations-app .btn-secondary {
   background: #6b7280;
   color: white;
 }
 
-.btn-secondary:hover {
+.operations-app .btn-secondary:hover {
   background: #4b5563;
 }
 
-.btn-outline {
+.operations-app .btn-outline {
   background: transparent;
   color: #374151;
   border: 1px solid #d1d5db;
 }
 
-.btn-outline:hover {
+.operations-app .btn-outline:hover {
   background: #f9fafb;
 }
 
-.btn-danger {
+.operations-app .btn-danger {
   background: #ef4444;
   color: white;
 }
 
-.btn-danger:hover {
+.operations-app .btn-danger:hover {
   background: #dc2626;
 }
 
-.btn-sm {
+.operations-app .btn-sm {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
 }

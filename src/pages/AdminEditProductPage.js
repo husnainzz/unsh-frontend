@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  getProductById,
+  fetchProductDetails,
   updateProduct,
   fetchCategories,
-  fetchBrands,
 } from "../store/slices/productSlice";
 import { getProfile } from "../store/slices/authSlice";
 import "../styles/AdminEditProductPage.css";
@@ -50,9 +49,8 @@ const AdminEditProductPage = () => {
     }
 
     dispatch(getProfile());
-    dispatch(getProductById(id));
+    dispatch(fetchProductDetails(id));
     dispatch(fetchCategories());
-    dispatch(fetchBrands());
   }, [dispatch, isAuthenticated, userInfo?.role, navigate, id]);
 
   useEffect(() => {

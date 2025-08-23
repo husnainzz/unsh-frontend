@@ -23,10 +23,10 @@ const AdminDashboard = () => {
     useSelector((state) => state.auth);
   const { products } = useSelector((state) => state.products);
   const {
-    orders: allOrders,
+    adminOrders,
     loading: ordersLoading,
     error: ordersError,
-  } = useSelector((state) => state.orders);
+  } = useSelector((state) => state.order);
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -57,6 +57,16 @@ const AdminDashboard = () => {
     dispatch(fetchAllOrders());
     dispatch(fetchAllProducts());
   }, [dispatch, isAuthenticated, userInfo?.role, navigate]);
+
+  // Debug orders state
+  useEffect(() => {
+    console.log("AdminDashboard - Orders state:", {
+      adminOrders,
+      ordersLoading,
+      ordersError,
+      adminOrdersLength: adminOrders?.length,
+    });
+  }, [adminOrders, ordersLoading, ordersError]);
 
   useEffect(() => {
     if (activeTab === "customers") {
@@ -225,7 +235,7 @@ const AdminDashboard = () => {
   };
 
   const getOrderStats = () => {
-    if (!allOrders || !Array.isArray(allOrders)) {
+    if (!adminOrders || !Array.isArray(adminOrders)) {
       return {
         total: 0,
         pending: 0,
@@ -235,20 +245,20 @@ const AdminDashboard = () => {
         cancelled: 0,
       };
     }
-    const total = allOrders.length;
-    const pending = allOrders.filter(
+    const total = adminOrders.length;
+    const pending = adminOrders.filter(
       (order) => order.status === "pending"
     ).length;
-    const processing = allOrders.filter(
+    const processing = adminOrders.filter(
       (order) => order.status === "processing"
     ).length;
-    const shipped = allOrders.filter(
+    const shipped = adminOrders.filter(
       (order) => order.status === "shipped"
     ).length;
-    const delivered = allOrders.filter(
+    const delivered = adminOrders.filter(
       (order) => order.status === "delivered"
     ).length;
-    const cancelled = allOrders.filter(
+    const cancelled = adminOrders.filter(
       (order) => order.status === "cancelled"
     ).length;
 
@@ -279,14 +289,14 @@ const AdminDashboard = () => {
   };
 
   const getRevenueStats = () => {
-    if (!allOrders || !Array.isArray(allOrders)) {
+    if (!adminOrders || !Array.isArray(adminOrders)) {
       return { totalRevenue: 0, monthlyRevenue: 0 };
     }
-    const totalRevenue = allOrders
+    const totalRevenue = adminOrders
       .filter((order) => order.status !== "cancelled")
       .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
 
-    const monthlyRevenue = allOrders
+    const monthlyRevenue = adminOrders
       .filter((order) => {
         try {
           const orderDate = new Date(order.createdAt);
@@ -348,7 +358,7 @@ const AdminDashboard = () => {
   const orderStats = getOrderStats();
   const productStats = getProductStats();
   const revenueStats = getRevenueStats();
-  const recentOrders = allOrders ? allOrders.slice(0, 3) : [];
+  const recentOrders = adminOrders ? adminOrders.slice(0, 3) : [];
 
   return (
     <div className="operations-app">
@@ -689,7 +699,18 @@ const AdminDashboard = () => {
           {activeTab === "orders" && (
             <div className="content-card">
               <div className="card-header">
-                <h3>All Orders</h3>
+                <div className="header-content">
+                  <h3>All Orders</h3>
+                  <div className="header-actions">
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => dispatch(fetchAllOrders())}
+                      disabled={ordersLoading}
+                    >
+                      {ordersLoading ? "Loading..." : "Refresh Orders"}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="card-body">
                 {ordersLoading && (
@@ -725,14 +746,14 @@ const AdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {!allOrders || allOrders.length === 0 ? (
+                        {!adminOrders || adminOrders.length === 0 ? (
                           <tr>
                             <td colSpan="6" className="no-data">
                               <p>No orders found</p>
                             </td>
                           </tr>
                         ) : (
-                          allOrders.map((order) => (
+                          adminOrders.map((order) => (
                             <tr key={order._id}>
                               <td>{order._id.slice(-8)}</td>
                               <td>{order.user?.name || "N/A"}</td>

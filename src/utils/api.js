@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001/api";
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5001/api";
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -44,30 +45,39 @@ export const authAPI = {
   getProfile: () => api.get("/users/profile"),
   updateProfile: (userData) => api.put("/users/profile", userData),
   getMyOrders: () => api.get("/users/orders"),
-  getAllUsers: () => api.get("/users/all"), // New method for admin to get all users
+  getAllUsers: () => api.get("/users/all"), // Admin: Get all users
+  updateUserRole: (userId, roleData) =>
+    api.put(`/users/${userId}/role`, roleData), // Admin: Update user role
+  toggleUserStatus: (userId) => api.patch(`/users/${userId}/toggle-status`), // Admin: Toggle user status
 };
 
 // Product API calls
 export const productAPI = {
   getProducts: (params = {}) => api.get("/products", { params }),
-  getAllProducts: () => api.get("/products/all"), // New method for admin to get all products
-  getProduct: (id) => api.get(`/products/${id}`),
+  getAllProducts: () => api.get("/products/all"), // Admin: Get all products including inactive
+  getProductByProdId: (prodId) => api.get(`/products/prod/${prodId}`), // Get by prodId
   createProduct: (productData) => api.post("/products", productData),
-  updateProduct: (id, productData) => api.put(`/products/${id}`, productData),
-  deleteProduct: (id) => api.delete(`/products/${id}`),
-  toggleProductStatus: (id) => api.patch(`/products/${id}/toggle-status`),
+  updateProduct: (prodId, productData) =>
+    api.put(`/products/${prodId}`, productData), // Updated to use prodId
+  deleteProduct: (prodId) => api.delete(`/products/${prodId}`), // Updated to use prodId
+  toggleProductStatus: (prodId) =>
+    api.patch(`/products/${prodId}/toggle-status`), // Updated to use prodId
   getCategories: () => api.get("/products/categories"),
-  getBrands: () => api.get("/products/brands"),
 };
 
 // Order API calls
 export const orderAPI = {
   createOrder: (orderData) => api.post("/orders", orderData),
+  createGuestOrder: (orderData) => api.post("/orders/guest", orderData), // Guest order creation
   getOrder: (id) => api.get(`/orders/${id}`),
+  getOrderByTrackingId: (trackingId) => api.get(`/orders/track/${trackingId}`), // Public order tracking
   getAllOrders: (params = {}) => api.get("/orders", { params }),
   updateOrderStatus: (id, statusData) =>
     api.put(`/orders/${id}/status`, statusData),
+  updatePaymentStatus: (id, paymentData) =>
+    api.put(`/orders/${id}/payment`, paymentData), // Update payment status
   cancelOrder: (id) => api.put(`/orders/${id}/cancel`),
+  getUserOrders: () => api.get("/orders/user/orders"), // Get current user's orders
 };
 
 export default api;

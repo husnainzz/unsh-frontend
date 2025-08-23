@@ -1,231 +1,212 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import { addToCart } from "../store/slices/cartSlice";
+import {
+  addToWishlist,
+  removeFromWishlist,
+  selectIsInWishlist,
+} from "../store/slices/wishlistSlice";
+import SizeColorModal from "./SizeColorModal";
 import "../styles/ProductCard.css";
 
 const ProductCard = ({ product }) => {
-  const [selectedSize, setSelectedSize] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [showOptions, setShowOptions] = useState(false);
-
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { userInfo } = useSelector((state) => state.auth);
+  const [showSizeColorModal, setShowSizeColorModal] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  const handleAddToCart = () => {
-    if (!selectedSize || !selectedColor) {
-      setShowOptions(true);
+  // Helper function to get the primary product ID (always prioritize prodId)
+  const getPrimaryProductId = () => {
+    return product?.prodId || product?._id;
+  };
+
+  const isInWishlist = useSelector((state) =>
+    selectIsInWishlist(state, getPrimaryProductId())
+  );
+
+  // Safety check: ensure product exists
+  if (!product) {
+    console.error("ProductCard: product prop is undefined");
+    return null;
+  }
+
+  // Handle favorite toggle (now works for both guests and authenticated users)
+  const handleFavoriteToggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const productId = getPrimaryProductId();
+
+    if (isInWishlist) {
+      dispatch(removeFromWishlist({ productId }));
+    } else {
+      dispatch(addToWishlist({ product }));
+    }
+  };
+
+  // Handle add to cart click
+  const handleAddToCartClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Allow both guests and authenticated users to add to cart
+    setShowSizeColorModal(true);
+  };
+
+  // Handle add to cart from modal
+  const handleAddToCart = ({
+    product: modalProduct,
+    size,
+    color,
+    quantity,
+  }) => {
+    setIsAddingToCart(true);
+
+    // Use the product from modal or fallback to component's product
+    const productToAdd = modalProduct || product;
+
+    // Safety check: ensure product exists
+    if (!productToAdd || (!productToAdd.prodId && !productToAdd._id)) {
+      console.error("Invalid product data:", productToAdd);
+      setIsAddingToCart(false);
       return;
     }
 
-    // Extract color value for cart storage
-    const colorValue =
-      typeof selectedColor === "object" ? selectedColor.name : selectedColor;
-
     dispatch(
       addToCart({
-        product,
-        size: selectedSize,
-        color: colorValue,
+        product: productToAdd,
+        size,
+        color,
         quantity,
       })
     );
 
-    // Reset form
-    setSelectedSize("");
-    setSelectedColor("");
-    setQuantity(1);
-    setShowOptions(false);
+    // Show success feedback (you can add a toast notification here)
+    setIsAddingToCart(false);
   };
 
-  const handleQuickAdd = () => {
-    if (
-      product.sizes &&
-      product.sizes.length > 0 &&
-      product.colors &&
-      product.colors.length > 0
-    ) {
-      setShowOptions(true);
-    } else {
-      // If no size/color options, add directly
-      dispatch(
-        addToCart({
-          product,
-          size: "One Size",
-          color: "Default",
-          quantity: 1,
-        })
-      );
+  // Handle view details click
+  const handleViewDetails = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const productLink = `/product/${getPrimaryProductId()}`;
+    navigate(productLink);
+  };
+
+  // Get product image - prioritize featured image, then first image, then placeholder
+  const getProductImage = () => {
+    if (product.images && product.images.length > 0) {
+      const featuredImage = product.images.find((img) => img.featured);
+      if (featuredImage) {
+        return featuredImage.url || featuredImage;
+      }
+      return product.images[0].url || product.images[0];
     }
+    return "https://via.placeholder.com/300x400?text=Product";
+  };
+
+  // Format price with PKR currency
+  const formatPrice = (price) => {
+    return `PKR ${parseFloat(price).toFixed(2)}`;
+  };
+
+  // Render stars for rating
+  const renderStars = (rating) => {
+    const ratingValue = rating || 0;
+    const fullStars = Math.floor(ratingValue);
+    const hasHalfStar = ratingValue % 1 !== 0;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+    return (
+      <div className="product-stars">
+        {/* Full stars */}
+        {[...Array(fullStars)].map((_, i) => (
+          <span key={`full-${i}`} className="star star-filled">
+            ★
+          </span>
+        ))}
+        {/* Half star */}
+        {hasHalfStar && <span className="star star-half">★</span>}
+        {/* Empty stars */}
+        {[...Array(emptyStars)].map((_, i) => (
+          <span key={`empty-${i}`} className="star">
+            ☆
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  // Get product ID for display
+  const getProductId = () => {
+    return getPrimaryProductId() || "N/A";
   };
 
   return (
-    <div className="product-card">
-      <div className="product-image">
-        <Link to={`/product/${product._id}`}>
+    <>
+      <div className="product-card">
+        <div className="product-image">
           <img
-            src={
-              product.images?.[0] ||
-              "https://via.placeholder.com/300x400?text=Product"
-            }
+            src={getProductImage()}
             alt={product.name}
+            className="product-img"
           />
-        </Link>
+          {product.isNew && <div className="product-badge">New In</div>}
 
-        <div className="product-actions">
-          <button className="action-btn quick-add" onClick={handleQuickAdd}>
-            Quick Add
-          </button>
-          <Link
-            to={`/product/${product._id}`}
-            className="action-btn view-details"
+          {/* Favorite Heart Button - Now works for guests too */}
+          <button
+            className={`favorite-btn ${isInWishlist ? "favorite-active" : ""}`}
+            onClick={handleFavoriteToggle}
+            title={isInWishlist ? "Remove from favorites" : "Add to favorites"}
           >
-            View Details
-          </Link>
+            <i
+              className={`fa-${isInWishlist ? "solid" : "regular"} fa-heart`}
+            ></i>
+          </button>
+
+          {/* Hover Overlay with View Details Button */}
+          <div className="product-overlay">
+            <button className="view-product-btn" onClick={handleViewDetails}>
+              View Details
+            </button>
+          </div>
+        </div>
+
+        <div className="product-details">
+          <h3 className="product-name">{product.name}</h3>
+          <p className="product-price">{formatPrice(product.price)}</p>
+
+          {/* Reviews Section */}
+          <div className="product-reviews">
+            {renderStars(product.rating)}
+            <span className="product-rating-text">
+              {product.rating ? `(${product.rating})` : "(No reviews)"}
+            </span>
+          </div>
+
+          {/* Add to Cart Button */}
+          <button
+            className="product-button"
+            onClick={handleAddToCartClick}
+            disabled={isAddingToCart}
+          >
+            {isAddingToCart ? "Adding..." : "Add to Cart"}
+          </button>
         </div>
       </div>
 
-      <div className="product-info">
-        <Link to={`/product/${product._id}`} className="product-name">
-          {product.name}
-        </Link>
-        <p className="product-brand">{product.brand}</p>
-        <div className="product-price">${product.price}</div>
-
-        {product.rating && (
-          <div className="product-rating">
-            <span className="stars">
-              {"★".repeat(
-                Math.floor(
-                  typeof product.rating === "object"
-                    ? product.rating.average || 0
-                    : product.rating
-                )
-              )}
-              {"☆".repeat(
-                5 -
-                  Math.floor(
-                    typeof product.rating === "object"
-                      ? product.rating.average || 0
-                      : product.rating
-                  )
-              )}
-            </span>
-            <span className="rating-text">
-              (
-              {typeof product.rating === "object"
-                ? product.rating.average || 0
-                : product.rating}
-              )
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Quick Add Options Modal */}
-      {showOptions && (
-        <div className="quick-add-modal">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Quick Add to Cart</h3>
-              <button
-                className="close-btn"
-                onClick={() => setShowOptions(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="modal-body">
-              {product.sizes && product.sizes.length > 0 && (
-                <div className="option-group">
-                  <label>Size:</label>
-                  <div className="option-buttons">
-                    {product.sizes &&
-                      product.sizes.map((size) => (
-                        <button
-                          key={size}
-                          className={`option-btn ${
-                            selectedSize === size ? "selected" : ""
-                          }`}
-                          onClick={() => setSelectedSize(size)}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {product.colors && product.colors.length > 0 && (
-                <div className="option-group">
-                  <label>Color:</label>
-                  <div className="option-buttons">
-                    {product.colors &&
-                      product.colors.map((color) => (
-                        <button
-                          key={typeof color === "object" ? color._id : color}
-                          className={`option-btn ${
-                            (typeof selectedColor === "object"
-                              ? selectedColor._id
-                              : selectedColor) ===
-                            (typeof color === "object" ? color._id : color)
-                              ? "selected"
-                              : ""
-                          }`}
-                          onClick={() => setSelectedColor(color)}
-                          style={{
-                            backgroundColor:
-                              typeof color === "object" ? color.hexCode : color,
-                          }}
-                          title={typeof color === "object" ? color.name : color}
-                        >
-                          {typeof color === "object" ? color.name : color}
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="option-group">
-                <label>Quantity:</label>
-                <div className="quantity-controls">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    disabled={quantity <= 1}
-                  >
-                    -
-                  </button>
-                  <span>{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    disabled={quantity >= 10}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button
-                className="btn btn-outline"
-                onClick={() => setShowOptions(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn"
-                onClick={handleAddToCart}
-                disabled={!selectedSize || !selectedColor}
-              >
-                Add to Cart
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Size and Color Selection Modal */}
+      <SizeColorModal
+        product={product}
+        isOpen={showSizeColorModal}
+        onClose={() => setShowSizeColorModal(false)}
+        onAddToCart={handleAddToCart}
+        isInCart={false}
+      />
+    </>
   );
 };
 

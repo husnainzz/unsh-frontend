@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import {
-  createProduct,
-  fetchCategories,
-  fetchBrands,
-} from "../store/slices/productSlice";
+import { createProduct, fetchCategories } from "../store/slices/productSlice";
 import { getProfile } from "../store/slices/authSlice";
 import "../styles/AdminCreateProductPage.css";
 
@@ -49,7 +45,6 @@ const AdminCreateProductPage = () => {
 
     dispatch(getProfile());
     dispatch(fetchCategories());
-    dispatch(fetchBrands());
   }, [dispatch, isAuthenticated, userInfo?.role, navigate]);
 
   const handleInputChange = (e) => {
